@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+    <!-- questi 4 tag servono per:
+        - disabilitare lo zoom, 
+        - impostare icona e manifest (il manifest contiene la descrizione della app)
+        - selezionare il tema (theme-color è il colore della finestra) 
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#00d2d3">
+
+    <title>Labirinto</title>
+    <style>
+        /* Si applica a tutta la pagina */
+        html {
+            /* Sintassi: scrollbar-color: [colore maniglia] [colore traccia sfondo]; */
+            scrollbar-color: #00d2d3 #121212;
+
+            /* Opzionale: definisce lo spessore (auto, thin) */
+            scrollbar-width: thin;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            box-sizing: border-box;
+        }
+
+        .dashboard {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .dashboard h1 {
+            margin: 0 0 10px 0;
+            color: #00d2d3;
+        }
+
+        .stats {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        #status {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #feca57;
+            min-height: 25px;
+        }
+
+        .controls {
+            margin-top: 15px;
+            background: #222;
+            padding: 10px 20px;
+            border-radius: 6px;
+        }
+
+        .controls label {
+            margin: 0 10px;
+            cursor: pointer;
+        }
+
+        /* Regole per il labirinto SVG */
+        svg {
+            background-color: #000;
+            border: 4px solid #54a0ff;
+            border-radius: 8px;
+            cursor: crosshair;
+            touch-action: none;
+            /* Impedisce lo scorrimento della pagina */
+            width: 100%;
+            max-width: 90vw;
+            /* Non supera mai il 90% della larghezza dello schermo */
+            max-height: 75vh;
+            /* FONDAMENTALE IN ORIZZONTALE: non supera il 75% dell'altezza dello schermo */
+            height: auto;
+        }
+
+
+        button {
+            margin-left: 15px;
+            padding: 8px 16px;
+            background-color: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="dashboard">
+        <h1>⚡ Labirinto</h1>
+        <div class="stats">
+            Tempo: <strong id="timer" style="color: #48dbfb;">0.00</strong>s |
+            🏆 Record: <strong id="bestTime" style="color: #1dd1a1;">--</strong>s <button id="btnReset" onclick="resettaRecord();">Azzera Record</button>
+
+        </div>
+        <div id="status">Posiziona il cursore su START per prepararti</div>
+    </div>
+
+
+    <!-- STRUTTURA GRAFICA SVG -->
+    <div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="600" height="340" viewBox="0 0 600 340">
+            <defs>
+                <style>
+                    #walls {
+                        fill: #ff4d4d;
+                    }
+
+                    #track {
+                        fill: none;
+                        stroke: #2d3436;
+                        stroke-width: 45px;
+                        stroke-linecap: round;
+                    }
+
+                    .label {
+                        font-family: sans-serif;
+                        font-size: 12px;
+                        fill: white;
+                        pointer-events: none;
+                        text-anchor: middle;
+                        dominant-baseline: middle;
+                    }
+                </style>
+            </defs>
+            <!-- Sostituiamo onmouseover con onpointerover -->
+            <rect id="walls" width="600" height="340" onpointerover="gestisciScontro();" />
+            <path id="track" d="M 60 60 H 540 V 170 H 60 V 280 H 540" />
+
+            <!-- SU START: se usiamo il mouse basta onpointerenter. Se usiamo il touch (onpointerdown) sblocchiamo il cattura-tocco -->
+            <circle id="start" cx="60" cy="60" r="22" fill="#1dd1a1" cursor="pointer" onpointerenter="preparaPartita();"
+                onpointerdown="this.releasePointerCapture(event.pointerId);" onpointerleave="avviaGioco();" />
+            <text x="60" y="60" class="label">START</text>
+
+            <!-- Sostituiamo onmouseenter con onpointerenter -->
+            <circle id="finish" cx="540" cy="280" r="22" fill="#54a0ff" onpointerenter="gestisciVittoria();" />
+            <text x="540" y="280" class="label">GOAL</text>
+        </svg>
+    </div>
+
+    
+    <!-- SELETTORE DIFFICOLTÀ -->
+    <div class="controls">
+        <strong>Difficoltà:</strong>
+        <label><input type="radio" name="diff" value="70" onchange="cambiaDifficolta(this.value);"> Facile</label>
+        <label><input type="radio" name="diff" value="45" checked="" onchange="cambiaDifficolta(this.value);">
+            Medio</label>
+        <label><input type="radio" name="diff" value="25" onchange="cambiaDifficolta(this.value);"> Difficile</label>
+    </div>
+
+    <script>
+        // 1. SELEZIONE ELEMENTI DOM
+        const start = document.getElementById('start');
+        const finish = document.getElementById('finish');
+        const walls = document.getElementById('walls');
+        const track = document.getElementById('track');
+        const timerText = document.getElementById('timer');
+        const bestTimeText = document.getElementById('bestTime');
+        const statusText = document.getElementById('status');
+        const btnReset = document.getElementById('btnReset');
+        const radioButtons = document.getElementsByName('diff');
+
+        // VARIABILI DI STATO
+        let isPlaying = false;
+        let startTime = 0;
+        let timerInterval = null;
+
+        // CARICAMENTO RECORD DA LOCALSTORAGE
+        let savedRecord = localStorage.getItem('bestTimeSvg');
+        if (savedRecord) {
+            bestTimeText.textContent = savedRecord;
+        }
+
+        // 2. FUNZIONI NOMINATE PER LA LOGICA DI GIOCO
+
+
+        function cambiaDifficolta(valore) {
+            track.style.strokeWidth = valore + 'px';
+        }
+
+        function aggiornaTimer() {
+            const tempoTrascorso = ((Date.now() - startTime) / 1000).toFixed(2);
+            timerText.textContent = tempoTrascorso;
+        }
+
+        function preparaPartita() {
+            if (!isPlaying) {
+                statusText.textContent = "🎯 Pronto... Esci dal cerchio verde per far partire il tempo!";
+                statusText.style.color = "#feca57";
+            }
+        }
+
+        function avviaGioco() {
+            if (!isPlaying) {
+                isPlaying = true;
+                startTime = Date.now();
+                statusText.textContent = "🎮 IN GIOCO! Resta sul percorso scuro!";
+                statusText.style.color = "#1dd1a1";
+
+                clearInterval(timerInterval);
+                timerInterval = setInterval(aggiornaTimer, 50);
+            }
+        }
+
+        function gestisciScontro() {
+            if (isPlaying) {
+                isPlaying = false;
+                clearInterval(timerInterval);
+                statusText.textContent = "💥 HAI PERSO! Sei uscito dal percorso!";
+                statusText.style.color = "#ff4d4d";
+            }
+        }
+
+        function gestisciVittoria() {
+            if (isPlaying) {
+                isPlaying = false;
+                clearInterval(timerInterval);
+
+                const finalTime = parseFloat(((Date.now() - startTime) / 1000).toFixed(2));
+                statusText.textContent = "🎉 VITTORIA! Tempo: " + finalTime + "s";
+                statusText.style.color = "#54a0ff";
+
+                // Gestione Record
+                if (!savedRecord || finalTime < parseFloat(savedRecord)) {
+                    savedRecord = finalTime;
+                    localStorage.setItem('bestTimeSvg', finalTime);
+                    bestTimeText.textContent = finalTime;
+                    statusText.textContent += " 🏆 NUOVO RECORD!";
+                }
+            }
+        }
+
+        function resettaRecord() {
+            localStorage.removeItem('bestTimeSvg');
+            savedRecord = null;
+            bestTimeText.textContent = "--";
+            statusText.textContent = "Record azzerato!";
+        }
+
+
+        // Registrazione Service Worker per installare la PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+
+    </script>
+
+</body>
+
+</html>

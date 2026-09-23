@@ -1,0 +1,15 @@
+{
+  "name": "Gioco del Labirinto",
+  "short_name": "Labirinto",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#000",
+  "theme_color": "#00d2d3",
+  "icons": [
+    {
+      "src": "logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
