@@ -27,23 +27,43 @@ Il gioco è costruito con HTML, CSS e JavaScript vanilla, senza framework estern
 
 ## Come eseguire il progetto
 
-### Opzione 1: aprire direttamente la pagina
+Per il corretto funzionamento del service worker e delle funzionalità PWA, è consigliato avviare il progetto tramite un server locale.
 
-Puoi aprire semplicemente `index.html` nel browser.
+### Live Server di Visual Studio Code
 
-### Opzione 2: usare un server locale (consigliato)
+1. Installa l'estensione **Live Server** in Visual Studio Code.
+2. Apri la cartella del progetto.
+3. Fai clic con il tasto destro su `index.html`.
+4. Seleziona **Open with Live Server**.
 
-Per evitare problemi con il service worker e per avere un comportamento più simile a una PWA, è consigliato avviare un server locale:
+Il progetto verrà aperto automaticamente nel browser, generalmente su un indirizzo simile a:
+
+```text
+http://127.0.0.1:5500
+```
+
+### PHP Live Server
+
+Se hai PHP installato, puoi avviare un server locale dalla cartella del progetto con:
 
 ```bash
-cd labirinto-pwa
-python -m http.server 8000
+php -S localhost:8000
 ```
 
 Poi apri nel browser:
 
 ```text
 http://localhost:8000
+```
+
+### XAMPP
+
+1. Copia la cartella `labirinto-pwa` nella directory `htdocs` di XAMPP.
+2. Avvia **Apache** dal pannello di controllo di XAMPP.
+3. Apri nel browser:
+
+```text
+http://localhost/labirinto-pwa
 ```
 
 ## Come giocare
@@ -62,7 +82,7 @@ Il progetto include:
 - `manifest.json` per definire il nome, i colori e l'icona
 - `sw.js` per gestire la cache e consentire l'uso offline
 
-Per installare la PWA, apri la pagina in un browser moderno e usa l'opzione "Installa app" o "Add to Home Screen" quando disponibile.
+Per installare la PWA, apri la pagina in un browser moderno tramite un server locale e usa l'opzione **Installa app** o **Add to Home Screen**, quando disponibile.
 
 ## TODO / Possibili miglioramenti
 
